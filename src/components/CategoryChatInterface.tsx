@@ -162,7 +162,7 @@ const CategoryChatInterface = ({ category, categoryLabel, onRemove, onDataChange
               value={input}
               onChange={(e) => handleInputChange(e.target.value)}
               placeholder={`Enter your ${categoryLabel.toLowerCase()} information...`}
-              className="min-h-[80px] resize-none flex-1"
+              className="min-h-[36px] max-h-[36px] resize-none flex-1 py-2"
             />
             <div className="flex flex-col gap-2">
               <Button
