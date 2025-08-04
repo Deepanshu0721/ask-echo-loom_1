@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Plus, Send, Upload, X, Loader2 } from "lucide-react";
+import { MessageSquare, Plus, Send, Upload, X, Loader2, ChevronDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -203,22 +204,34 @@ const ChatInterface = () => {
 
   const sendToWebhook = async (combinedInput: string, categoryInputData: Record<string, CategoryData>) => {
     try {
-      const allFiles = Object.values(categoryInputData).flatMap(data => 
-        data.files.map(f => ({ name: f.name, type: f.type, size: f.size }))
-      );
+      const formData = new FormData();
+      
+      // Add text data
+      formData.append('combinedChatInput', combinedInput);
+      formData.append('sessionId', `combined_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+      
+      // Add category inputs (text only)
+      const categoryTextData: Record<string, string> = {};
+      Object.entries(categoryInputData).forEach(([categoryId, data]) => {
+        categoryTextData[categoryId] = data.input;
+      });
+      formData.append('categoryInputs', JSON.stringify(categoryTextData));
+      
+      // Add actual files from all categories
+      Object.entries(categoryInputData).forEach(([categoryId, data]) => {
+        data.files.forEach((file, index) => {
+          formData.append(`${categoryId}_file_${index}`, file);
+        });
+      });
+      
+      // Add combined chat files
+      combinedChatFiles.forEach((file, index) => {
+        formData.append(`combined_file_${index}`, file);
+      });
 
-      // Send combined chat input and category input separately
       const response = await fetch("http://localhost:5678/webhook-test/aac7bb60-1eea-4268-9394-67f12140c5b6", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          combinedChatInput: combinedInput,
-          categoryInputs: categoryInputData,
-          sessionId: `combined_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          uploadedFiles: allFiles
-        }),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -258,33 +271,42 @@ const ChatInterface = () => {
         </CardHeader>
         
         <CardContent>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium">Select Prompt Sections</Label>
-              <p className="text-xs text-muted-foreground mb-3">Choose one or more categories to create separate chat interfaces</p>
+          <Collapsible defaultOpen={true}>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Select Prompt Sections</Label>
+                <p className="text-xs text-muted-foreground">Choose one or more categories to create separate chat interfaces</p>
+              </div>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </CollapsibleTrigger>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              {categories.map((category) => (
-                <div
-                  key={category.id}
-                  className="flex items-center space-x-2"
-                >
-                  <Checkbox
-                    id={category.id}
-                    checked={selectedCategories.includes(category.id)}
-                    onCheckedChange={() => toggleCategory(category.id)}
-                  />
-                  <Label
-                    htmlFor={category.id}
-                    className="text-sm cursor-pointer leading-tight"
+            <CollapsibleContent className="space-y-3 pt-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {categories.map((category) => (
+                  <div
+                    key={category.id}
+                    className="flex items-center space-x-2"
                   >
-                    {category.label}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div>
+                    <Checkbox
+                      id={category.id}
+                      checked={selectedCategories.includes(category.id)}
+                      onCheckedChange={() => toggleCategory(category.id)}
+                    />
+                    <Label
+                      htmlFor={category.id}
+                      className="text-sm cursor-pointer leading-tight"
+                    >
+                      {category.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
 

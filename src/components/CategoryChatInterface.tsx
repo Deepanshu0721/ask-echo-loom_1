@@ -16,7 +16,7 @@ interface UploadedFile {
 
 export interface CategoryData {
   input: string;
-  files: UploadedFile[];
+  files: File[];
 }
 
 interface CategoryChatInterfaceProps {
@@ -28,12 +28,13 @@ interface CategoryChatInterfaceProps {
 
 const CategoryChatInterface = ({ category, categoryLabel, onRemove, onDataChange }: CategoryChatInterfaceProps) => {
   const [input, setInput] = useState("");
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [fileDisplayInfo, setFileDisplayInfo] = useState<UploadedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Notify parent component when data changes
-  const updateParent = (newInput: string, newFiles: UploadedFile[]) => {
+  const updateParent = (newInput: string, newFiles: File[]) => {
     onDataChange(category, { input: newInput, files: newFiles });
   };
 
@@ -41,6 +42,9 @@ const CategoryChatInterface = ({ category, categoryLabel, onRemove, onDataChange
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
+
+    const newFiles: File[] = [];
+    const newDisplayInfo: UploadedFile[] = [];
 
     Array.from(files).forEach(file => {
       // Validate file type
@@ -70,22 +74,26 @@ const CategoryChatInterface = ({ category, categoryLabel, onRemove, onDataChange
         return;
       }
 
-      const newFile: UploadedFile = {
+      newFiles.push(file);
+      newDisplayInfo.push({
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         name: file.name,
         size: file.size,
         type: file.type,
-      };
-
-      const updatedFiles = [...uploadedFiles, newFile];
-      setUploadedFiles(updatedFiles);
-      updateParent(input, updatedFiles);
+      });
       
       toast({
         title: "File uploaded",
         description: `${file.name} has been uploaded successfully.`,
       });
     });
+
+    const updatedFiles = [...uploadedFiles, ...newFiles];
+    const updatedDisplayInfo = [...fileDisplayInfo, ...newDisplayInfo];
+    
+    setUploadedFiles(updatedFiles);
+    setFileDisplayInfo(updatedDisplayInfo);
+    updateParent(input, updatedFiles);
 
     // Reset input
     if (fileInputRef.current) {
@@ -94,13 +102,20 @@ const CategoryChatInterface = ({ category, categoryLabel, onRemove, onDataChange
   };
 
   const removeFile = (fileId: string) => {
-    const updatedFiles = uploadedFiles.filter(f => f.id !== fileId);
-    setUploadedFiles(updatedFiles);
-    updateParent(input, updatedFiles);
-    toast({
-      title: "File removed",
-      description: "File has been removed from the chat.",
-    });
+    const fileIndex = fileDisplayInfo.findIndex(f => f.id === fileId);
+    if (fileIndex !== -1) {
+      const updatedFiles = uploadedFiles.filter((_, index) => index !== fileIndex);
+      const updatedDisplayInfo = fileDisplayInfo.filter(f => f.id !== fileId);
+      
+      setUploadedFiles(updatedFiles);
+      setFileDisplayInfo(updatedDisplayInfo);
+      updateParent(input, updatedFiles);
+      
+      toast({
+        title: "File removed",
+        description: "File has been removed from the chat.",
+      });
+    }
   };
 
   const handleInputChange = (value: string) => {
@@ -139,31 +154,27 @@ const CategoryChatInterface = ({ category, categoryLabel, onRemove, onDataChange
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col p-4 space-y-4">
-        {/* Input Section */}
+        {/* Input Section - Single Row Layout */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">Input</Label>
-          <Textarea
-            value={input}
-            onChange={(e) => handleInputChange(e.target.value)}
-            placeholder={`Enter your ${categoryLabel.toLowerCase()} information...`}
-            className="min-h-[10px] resize-none"
-          />
-        </div>
-
-        {/* Document Upload Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">Documents</Label>
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              variant="outline"
-              // variant= "ghost"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Upload className="h-3 w-3" />
-              Upload
-            </Button>
+          <div className="flex gap-3">
+            <Textarea
+              value={input}
+              onChange={(e) => handleInputChange(e.target.value)}
+              placeholder={`Enter your ${categoryLabel.toLowerCase()} information...`}
+              className="min-h-[80px] resize-none flex-1"
+            />
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 whitespace-nowrap"
+              >
+                <Upload className="h-3 w-3" />
+                Upload
+              </Button>
+            </div>
           </div>
           
           <input
@@ -175,9 +186,14 @@ const CategoryChatInterface = ({ category, categoryLabel, onRemove, onDataChange
             className="hidden"
           />
 
-          {uploadedFiles.length > 0 && (
+        </div>
+
+        {/* File Display Section */}
+        {fileDisplayInfo.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Uploaded Files</Label>
             <div className="space-y-2">
-              {uploadedFiles.map((file) => (
+              {fileDisplayInfo.map((file) => (
                 <div
                   key={file.id}
                   className="flex items-center justify-between p-2 bg-muted rounded-md border border-border"
@@ -200,8 +216,8 @@ const CategoryChatInterface = ({ category, categoryLabel, onRemove, onDataChange
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
