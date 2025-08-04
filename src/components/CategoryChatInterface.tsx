@@ -146,7 +146,7 @@ const CategoryChatInterface = ({ category, categoryLabel, onRemove, onDataChange
             value={input}
             onChange={(e) => handleInputChange(e.target.value)}
             placeholder={`Enter your ${categoryLabel.toLowerCase()} information...`}
-            className="min-h-[100px] resize-none"
+            className="min-h-[10px] resize-none"
           />
         </div>
 
@@ -157,6 +157,7 @@ const CategoryChatInterface = ({ category, categoryLabel, onRemove, onDataChange
             <Button
               onClick={() => fileInputRef.current?.click()}
               variant="outline"
+              // variant= "ghost"
               size="sm"
               className="flex items-center gap-2"
             >
