@@ -204,18 +204,23 @@ const ChatInterface = () => {
 
   const sendToWebhook = async (combinedInput: string, categoryInputData: Record<string, CategoryData>) => {
     try {
+      // Create a structured JSON payload
+      const payload = {
+        combinedChatInput: combinedInput,
+        sessionId: `combined_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        categories: Object.entries(categoryInputData).map(([categoryId, data]) => ({
+          categoryId,
+          inputText: data.input,
+          fileNames: data.files.map(file => file.name),
+          fileCount: data.files.length
+        })),
+        combinedChatFiles: combinedChatFiles.map(file => file.name)
+      };
+
       const formData = new FormData();
       
-      // Add text data
-      formData.append('combinedChatInput', combinedInput);
-      formData.append('sessionId', `combined_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
-      
-      // Add category inputs (text only)
-      const categoryTextData: Record<string, string> = {};
-      Object.entries(categoryInputData).forEach(([categoryId, data]) => {
-        categoryTextData[categoryId] = data.input;
-      });
-      formData.append('categoryInputs', JSON.stringify(categoryTextData));
+      // Add the structured JSON payload
+      formData.append('payload', JSON.stringify(payload));
       
       // Add actual files from all categories
       Object.entries(categoryInputData).forEach(([categoryId, data]) => {
